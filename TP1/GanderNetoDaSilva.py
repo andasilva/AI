@@ -78,7 +78,7 @@ def mutate():
 
 
 def evaluate():
-    pass
+    print("evaluate")
 
 
 def ga_solve(file=None, gui=True, maxtime=0):
