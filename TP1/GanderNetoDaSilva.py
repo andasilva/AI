@@ -6,17 +6,17 @@ from collections import namedtuple
 mutationRate = 0.1;
 crossOverRate = 0.6;
 
-
-class City:
-    """Represent a city by it's name and position"""
-    def __init__(self, name, position):
-        """Init the city"""
-        self.name = name
-        self.position = position
+list_cities = []
 
 
-#Will contain all the cities object
-listCities = []
+def open_file(path):
+    if path:
+        with open(path, 'r') as file:
+            for line in file:
+                content = line.split()
+                list_cities.append(City((int(content[1]), int(content[2])), content[0]))
+    else:
+        print("File doesn't exist")
 
 def launch_gui():
     screen_x = 500
@@ -55,7 +55,7 @@ def launch_gui():
                 collecting = False
             elif event.type == MOUSEBUTTONDOWN:
                 cities.append(pygame.mouse.get_pos())
-                listCities.append(City("bidon",pygame.mouse.get_pos()))
+                list_cities.append(City("bidon",pygame.mouse.get_pos()))
                 draw(cities)
 
     screen.fill(0)
@@ -69,21 +69,33 @@ def launch_gui():
         event = pygame.event.wait()
         if event.type == KEYDOWN: break
 
-
 def selection():
     pass
+
 
 def mutate():
     pass
 
+
 def evaluate():
     pass
+
 
 def ga_solve(file=None, gui=True, maxtime=0):
     if gui:
         launch_gui()
     else:
-        pass
+        open_file(sys.argv[1])
+
+
+class City(object):
+    def __init__(self, pos, name=None):
+        self.name = name
+        self.pos = pos
+
 
 if __name__ == '__main__':
-    ga_solve()
+    
+    open_file("Ressources/data/pb005.txt")
+    ga_solve(gui=False)
+
