@@ -1,10 +1,9 @@
 import pygame
 from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_RETURN, K_ESCAPE
 import sys
-from collections import namedtuple
 
-mutationRate = 0.1;
-crossOverRate = 0.6;
+mutationRate = 0.1
+crossOverRate = 0.6
 
 list_cities = []
 
@@ -17,6 +16,7 @@ def open_file(path):
                 list_cities.append(City((int(content[1]), int(content[2])), content[0]))
     else:
         print("File doesn't exist")
+
 
 def launch_gui():
     screen_x = 500
@@ -67,14 +67,16 @@ def launch_gui():
 
     while True:
         event = pygame.event.wait()
-        if event.type == KEYDOWN: break
+        if event.type == KEYDOWN:
+            break
+
 
 def selection():
     pass
 
 
 def mutate():
-    pass
+    print('mutate')
 
 
 def evaluate():
