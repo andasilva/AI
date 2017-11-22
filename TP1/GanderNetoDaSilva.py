@@ -2,11 +2,21 @@ import pygame
 from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_RETURN, K_ESCAPE
 import sys
 
-mutationRate = 0.1
-crossOverRate = 0.6
+mutation_rate = 0.1
+cross_over_rate = 0.6
+population_size = 20
 
+#Contient la population
+population = []
+
+#Villes récupéré depuis le fichier/gui
 list_cities = []
 
+#Résultat à dessiner
+cities_to_draw = []
+
+def populate(size):
+    pass
 
 def open_file(path):
     if path:
@@ -28,8 +38,8 @@ def launch_gui():
     font_color = [255, 255, 255]  # white
 
     pygame.init()
-    window = pygame.display.set_mode((screen_x, screen_y))
-    pygame.display.set_caption('Exemple')
+    pygame.display.set_mode((screen_x, screen_y))
+    pygame.display.set_caption('Le voyageur de commerce')
     screen = pygame.display.get_surface()
     font = pygame.font.Font(None, 30)
 
@@ -42,8 +52,7 @@ def launch_gui():
         screen.blit(text, textRect)
         pygame.display.flip()
 
-    cities = []
-    draw(cities)
+
 
     collecting = True
 
@@ -54,12 +63,12 @@ def launch_gui():
             elif event.type == KEYDOWN and event.key == K_RETURN:
                 collecting = False
             elif event.type == MOUSEBUTTONDOWN:
-                cities.append(pygame.mouse.get_pos())
+                cities_to_draw.append(pygame.mouse.get_pos())
                 list_cities.append(City("bidon",pygame.mouse.get_pos()))
-                draw(cities)
+                draw(cities_to_draw)
 
     screen.fill(0)
-    pygame.draw.lines(screen, city_color, True, cities)
+    pygame.draw.lines(screen, city_color, True, cities_to_draw)
     text = font.render("Un chemin, pas le meilleur!", True, font_color)
     textRect = text.get_rect()
     screen.blit(text, textRect)
@@ -72,6 +81,10 @@ def launch_gui():
 
 
 def selection():
+    """Sélectionner une sous-partie de la population qui servira de base à la population suivante"""
+    pass
+
+def crossing():
     pass
 
 
@@ -97,7 +110,6 @@ class City(object):
 
 
 if __name__ == '__main__':
-    
     open_file("Ressources/data/pb005.txt")
-    ga_solve(gui=False)
+    ga_solve()
 
