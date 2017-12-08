@@ -2,14 +2,19 @@ import pygame
 from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_RETURN, K_ESCAPE
 from math import hypot, sqrt
 import sys
+import datetime
 import random
 import argparse
 from copy import deepcopy
 
-mutation_rate = 0.1
-cross_over_rate = 0.6
+end = None
+max_time_if_algorithm_stagnant = 5
+time_specified = False
+
+mutation_rate = 0.4
+cross_over_rate = 0.1
 population_size = 20
-number_of_survivors = 10
+number_of_survivors = int(population_size / 2)
 
 # Contient la population
 populations = []
@@ -43,7 +48,7 @@ def draw_path(city_path):
     pygame.display.flip()
 
 
-def launch_gui(file):
+def init_pygame():
     """
     Init Pygame GUI
     """
@@ -58,13 +63,8 @@ def launch_gui(file):
     screen = pygame.display.get_surface()
     font = pygame.font.Font(None, 30)
 
-    # Collecting Data by file or click
-    if file is None:
-        collecting = True
-    else:
-        collecting = False
-        open_file(file)
 
+def collect_data():
     def draw(positions):
         """
         Draw the connections between cities position
@@ -78,8 +78,10 @@ def launch_gui(file):
         screen.blit(text, text_rect)
         pygame.display.flip()
 
+    collecting = True
+
+    counter = 0
     while collecting:
-        counter = 0
         for event in pygame.event.get():
             if event.type == QUIT:
                 sys.exit(0)
@@ -87,19 +89,12 @@ def launch_gui(file):
                 collecting = False
             elif event.type == MOUSEBUTTONDOWN:
                 cities_to_draw.append(pygame.mouse.get_pos())
-                list_cities.append(City("v{}".format(counter), pygame.mouse.get_pos()))
+                list_cities.append(City(pygame.mouse.get_pos(), "v{}".format(counter)))
                 draw(cities_to_draw)
                 counter += 1
 
-    # Calculate all distance
-    calculate_all_distance()
 
-    # Populate after collecting or reading the file
-    populate(population_size)
-
-    # Find the "best" path
-    processing()
-
+def display_result():
     draw_path(cities_to_draw)
 
     text = font.render("Un chemin, pas le meilleur!", True, font_color)
@@ -147,11 +142,15 @@ def calculate_all_distance():
 
 
 def processing():
-    while True:
+    while datetime.datetime.now() < end:
         evaluate()
         selection()
         crossing()
         mutate()
+
+    print(best_chromosome.fitness, end=" ")
+    for city in best_chromosome.list_cities:
+        print(city.name, end=" ")
 
 
 def evaluate():
@@ -173,20 +172,33 @@ def evaluate():
 
 def selection():
     """Sélectionner une sous-partie de la population qui servira de base à la population suivante"""
-    global cities_to_draw, best_chromosome, survivors
+    global cities_to_draw, best_chromosome, survivors, end
 
     populations.sort(key=lambda x: x.fitness)
 
+    """
+    Met à jour le meilleur chromosome trouvé pour garder une trace du meilleure chromosome
+    """
     if best_chromosome is None:
+        if not time_specified:
+            end = datetime.datetime.now() + datetime.timedelta(seconds=max_time_if_algorithm_stagnant)
         best_chromosome = deepcopy(populations[0])
         cities_to_draw = [city.pos for city in best_chromosome.list_cities]
-        draw_path(cities_to_draw)
+        if args.nogui is False:
+            draw_path(cities_to_draw)
     else:
         if populations[0].fitness < best_chromosome.fitness:
+            if not time_specified:
+                end = datetime.datetime.now() + datetime.timedelta(seconds=max_time_if_algorithm_stagnant)
             best_chromosome = deepcopy(populations[0])
             cities_to_draw = [city.pos for city in best_chromosome.list_cities]
-            draw_path(cities_to_draw)
+            if args.nogui is False:
+                draw_path(cities_to_draw)
+            print(best_chromosome.fitness)
 
+    """
+    Créer la prochaine population
+    """
     survivors = populations[:number_of_survivors]
 
 
@@ -232,7 +244,39 @@ def mutate():
 
 
 def ga_solve(file=None, gui=True, maxtime=0):
-    launch_gui(file)
+    global end, time_specified
+
+    if gui:
+        init_pygame()
+        if file is None:
+            collect_data()
+        else:
+            open_file(file)
+
+        if maxtime is not None and not 0:
+            end = datetime.datetime.now() + datetime.timedelta(seconds=maxtime)
+            time_specified = True
+        else:
+            end = datetime.datetime.now() + datetime.timedelta(seconds=max_time_if_algorithm_stagnant)
+        calculate_all_distance()
+        populate(population_size)
+        processing()
+        display_result()
+    else:
+        if file is None:
+            init_pygame()
+            collect_data()
+            end = datetime.datetime.now() + datetime.timedelta(seconds=max_time_if_algorithm_stagnant)
+        else:
+            open_file(file)
+        if maxtime is not None:
+            end = datetime.datetime.now() + datetime.timedelta(seconds=maxtime)
+            time_specified = True
+        else:
+            end = datetime.datetime.now() + datetime.timedelta(seconds=max_time_if_algorithm_stagnant)
+        calculate_all_distance()
+        populate(population_size)
+        processing()
 
 
 class City(object):
@@ -249,7 +293,23 @@ class Chromosome(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Gander & Neto da Silva André AI Algorithm")
-    # parser.add_argument('--nogui')
+    parser.add_argument('--nogui',
+                        dest='nogui',
+                        action='store_true',
+                        help='Ne pas afficher l\'évolution de l\'algorithme',
+                        )
 
-    ga_solve(sys.argv[1])
-    # ga_solve()
+    parser.add_argument('--maxtime',
+                        dest='maxtime',
+                        help='Temps maximum d\'éxécution',
+                        type=int
+                        )
+
+    parser.add_argument(dest='file',
+                        help='Fichier qui contient les coordonées des villes',
+                        nargs='?'
+                        )
+
+    args = parser.parse_args()
+
+    ga_solve(args.file, not args.nogui, args.maxtime)
