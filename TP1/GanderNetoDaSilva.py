@@ -120,8 +120,49 @@ def open_file(path):
 
 def populate(size):
     """ Create an initial population """
+
     for i in range(size):
-        populations.append(Chromosome(random.sample(list_cities, len(list_cities))))
+        first_city = random.choice(list_cities)
+        best_order = []
+        best_length = float('inf')
+
+        length = 0
+        order = [first_city]
+        next_c, dist = get_closest(first_city, list_cities, order)
+        length += dist
+        order.append(next_c)
+        while len(order) < len(list_cities):
+            next_c, dist = get_closest(next_c, list_cities, order)
+            length += dist
+            order.append(next_c)
+
+            if length < best_length:
+                best_length = length
+                best_order = order
+
+        populations.append(Chromosome(best_order))
+
+
+def get_closest(city, cities, visited):
+    best_distance = float('inf')
+
+    for c in cities:
+
+        if c not in visited:
+            distance = dist_squared(city, c)
+
+            if distance < best_distance:
+                closest_city = c
+                best_distance = distance
+
+    return closest_city, best_distance
+
+
+def dist_squared(c1, c2):
+    t1 = c2.pos[0] - c1.pos[0]
+    t2 = c2.pos[1] - c1.pos[1]
+
+    return t1**2 + t2**2
 
 
 def calculate_all_distance():
