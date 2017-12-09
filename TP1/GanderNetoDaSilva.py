@@ -11,24 +11,25 @@ end = None
 max_time_if_algorithm_stagnant = 5
 time_specified = False
 
-mutation_rate = 0.2
+# Processing configuration
+mutation_rate = 0.5
 cross_over_rate = 0.6
 population_size = 30
 number_of_elites = 3
+two_opt_needed = False
+counter_iteration_before_two_opt = 0
+limit_iteration_before_two_opt = 3
 
-# Contient la population
+# Contains all the chromosomes
 populations = []
 
-# Villes récupéré depuis le fichier/gui
+# Contains the cities retrieved by clicking or file
 list_cities = []
 
-# Best fitness reached
+# Contains the best chromosome found so far
 best_chromosome = None
 
-# Résultat à dessiner
-cities_to_draw = []
-
-# has all the distance between two cities
+# Contains all the distances between two cities
 distances = []
 
 # Survivors after selections
@@ -43,6 +44,10 @@ font_color = [255, 255, 255]  # white
 
 
 def draw_path(city_path):
+    """
+    Draw a path in the pygame window
+    :param city_path: list of cities position
+    """
     screen.fill(0)
     pygame.draw.lines(screen, city_color, True, city_path)
     pygame.display.flip()
@@ -65,6 +70,11 @@ def init_pygame():
 
 
 def collect_data():
+    """
+    Collect the cities with the position of the click in the Pygame window.
+    Print the click in the Pygame window
+    """
+
     def draw(positions):
         """
         Draw the connections between cities position
@@ -81,6 +91,7 @@ def collect_data():
     collecting = True
 
     counter = 0
+    cities_to_draw = []
     while collecting:
         for event in pygame.event.get():
             if event.type == QUIT:
@@ -95,9 +106,12 @@ def collect_data():
 
 
 def display_result():
-    draw_path(cities_to_draw)
+    """
+    Draw the best chromosome
+    """
+    draw_path([city.pos for city in best_chromosome.list_cities])
 
-    text = font.render("Un chemin, pas le meilleur!", True, font_color)
+    text = font.render("Maybe the best path!", True, font_color)
     text_rect = text.get_rect()
     screen.blit(text, text_rect)
     pygame.display.flip()
@@ -109,6 +123,10 @@ def display_result():
 
 
 def open_file(path):
+    """
+    Fill the cities list with the cities that are in the file
+    :param path: Path to the file
+    """
     if path:
         with open(path, 'r') as file:
             for line in file:
@@ -119,7 +137,10 @@ def open_file(path):
 
 
 def populate(size):
-    """ Create an initial population """
+    """
+    Create a population with "size" chromosomes
+    :param size: Size of the population
+    """
 
     for i in range(size):
         first_city = random.choice(list_cities)
@@ -159,13 +180,43 @@ def get_closest(city, cities, visited):
 
 
 def dist_squared(c1, c2):
-    t1 = c2.pos[0] - c1.pos[0]
-    t2 = c2.pos[1] - c1.pos[1]
+    """
+    Calculate the distance between two cities
+    :param c1: city one
+    :param c2: city two
+    :return: distance squared between c1 and c2
+    """
+    return get_distance_between_two_cities(c1, c2) ** 2
 
-    return t1**2 + t2**2
+
+def calculate_distance_between_two_cities(c1, c2):
+    """
+    Calculate the distance between two cities
+    :param c1: city one
+    :param c2: city two
+    :return: distance between c1 and c2
+    """
+    x1 = c1.pos[0]
+    x2 = c2.pos[0]
+    y1 = c1.pos[1]
+    y2 = c2.pos[1]
+    return sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+
+def get_distance_between_two_cities(c1, c2):
+    """
+    Get the distance between two cities
+    :param c1: city one
+    :param c2: city two
+    :return: distance between c1 and c2
+    """
+    return distances[int(c1.name[1:])][int(c2.name[1:])]
 
 
 def calculate_all_distance():
+    """
+    Calculate all distance between all the cities and stores in an array.
+    """
     for i in range(len(list_cities)):
         distances.append([])
         for j in range(len(list_cities)):
@@ -174,28 +225,57 @@ def calculate_all_distance():
             else:
                 city1 = list_cities[i]
                 city2 = list_cities[j % len(list_cities)]
-                x1 = city1.pos[0]
-                x2 = city2.pos[0]
-                y1 = city1.pos[1]
-                y2 = city2.pos[1]
-                distance = sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
-                distances[i].append(distance)
+                distances[i].append(calculate_distance_between_two_cities(city1, city2))
 
 
 def processing():
+    """
+    All processes are here and are executed as long as a terminal condition is not encountered
+    """
+    global two_opt_needed
     while datetime.datetime.now() < end:
+        if two_opt_needed:
+            # two_opt(best_chromosome.list_cities)
+            two_opt_needed = False
         evaluate()
         selection()
         crossing()
         mutate()
+        if counter_iteration_before_two_opt > limit_iteration_before_two_opt:
+            two_opt_needed = True
 
-    print(best_chromosome.fitness, end=" ")
-    for city in best_chromosome.list_cities:
-        print(city.name, end=" ")
+
+def two_opt(chromosome):
+    improvement = True
+    draw_path([city.pos for city in chromosome])
+
+    while improvement:
+        improvement = False
+        for index_1, city_1 in enumerate(chromosome):
+            for index_2, city_2 in enumerate(chromosome):
+                if index_2 not in [index_1, index_1 + 1, index_1 - 1, len(chromosome) - 1] and index_1 is not len(
+                        chromosome) - 1:
+                    first_distance = get_distance_between_two_cities(chromosome[index_1], chromosome[index_1 + 1])
+                    second_distance = get_distance_between_two_cities(chromosome[index_2],
+                                                                      chromosome[index_2 + 1])
+                    third_distance = get_distance_between_two_cities(chromosome[index_1], chromosome[index_2])
+                    fourth_distance = get_distance_between_two_cities(chromosome[index_1 + 1],
+                                                                      chromosome[index_2 + 1])
+
+                    if first_distance + second_distance > third_distance + fourth_distance:
+                        chromosome[index_1 + 1], chromosome[index_2] = chromosome[index_2], chromosome[index_1 + 1]
+                        draw_path([city.pos for city in chromosome])
+                        improvement = True
+                        break
+                if improvement:
+                    break
 
 
 def evaluate():
-    """ Evaluate the population """
+    """
+    Evaluate the population by calculating the distance total
+    """
+
     for chromosome in populations:
         total_distance = 0
         cities = chromosome.list_cities
@@ -211,36 +291,38 @@ def evaluate():
 
 
 def selection():
-    """Sélectionner une sous-partie de la population qui servira de base à la population suivante"""
-    global cities_to_draw, best_chromosome, survivors, end
+    """
+    Select the chromosomes that will survive to generate new chromosomes.
+    """
+    global best_chromosome, survivors, end, counter_iteration_before_two_opt
 
+    # Sort the actual population by its fitness
     populations.sort(key=lambda x: x.fitness)
 
-    """
-    Met à jour le meilleur chromosome trouvé pour garder une trace du meilleure chromosome
-    """
+    # If there was no best_chromosome, than the best of the current population is saved.
     if best_chromosome is None:
         if not time_specified:
             end = datetime.datetime.now() + datetime.timedelta(seconds=max_time_if_algorithm_stagnant)
         best_chromosome = deepcopy(populations[0])
-        cities_to_draw = [city.pos for city in best_chromosome.list_cities]
         if args.nogui is False:
-            draw_path(cities_to_draw)
+            draw_path([city.pos for city in best_chromosome.list_cities])
     else:
+        # If the best fitness of the current population is better than the current stored, then an update is done.
         if populations[0].fitness < best_chromosome.fitness:
             if not time_specified:
                 end = datetime.datetime.now() + datetime.timedelta(seconds=max_time_if_algorithm_stagnant)
             best_chromosome = deepcopy(populations[0])
-            cities_to_draw = [city.pos for city in best_chromosome.list_cities]
             if args.nogui is False:
-                draw_path(cities_to_draw)
-            print(best_chromosome.fitness)
+                draw_path([city.pos for city in best_chromosome.list_cities])
+            counter_iteration_before_two_opt = 0
+        else:
+            counter_iteration_before_two_opt += 1
 
-    """
-    Créer la prochaine demi-population
-    """
+    # Select the firsts survivors
     survivors = populations[:number_of_elites]
+    # Add the best chromosome to the survivors
     survivors.append(best_chromosome)
+    # Fill the population with unique random chromosomes
     random_population_index = random.sample(range(len(survivors), int(population_size / 2)),
                                             int(population_size / 2) - len(survivors))
     for i in random_population_index:
@@ -248,56 +330,64 @@ def selection():
 
 
 def crossing():
+    """
+    Cross each chromosome with another random chromosome. If there is duplicates values in the new chromosomes,
+    a swap between the duplicates values of each chromosome is performed.
+    """
     global populations
     cutting_point = int(len(list_cities) * cross_over_rate)
+    # empty the old population to welcome the new one
     populations[:] = []
 
     # Feel populations with new chromosomes
     for i in range(int(population_size / 2)):
         choice = random.randint(0, len(survivors) - 1)
+        # Generate the four slices to crossover
         first_slice_1 = survivors[i].list_cities[:cutting_point]
         second_slice_1 = survivors[choice].list_cities[cutting_point:]
-
         first_slice_2 = survivors[i].list_cities[cutting_point:]
         second_slice_2 = survivors[choice].list_cities[:cutting_point]
 
+        # Generate two chromosome with two slices
         chromosome_prototype_1 = first_slice_1 + second_slice_1
         chromosome_prototype_2 = first_slice_2 + second_slice_2
 
+        # Check duplicates values in the first new chromosome
         duplicates_value = []
         for index in first_slice_1:
             for iteration in second_slice_1:
                 if index.name == iteration.name:
                     duplicates_value.append(index)
-        # duplicates_value = [x for n, x in enumerate(chromosome_prototype_1) if x in chromosome_prototype_1[:n]]
-        # duplicates_value_to_exchange = [x for n, x in enumerate(chromosome_prototype_2) if
-        #                               x in chromosome_prototype_2[:n]]
 
+        # Check duplicates values in the second new chromosome
         duplicates_value_to_exchange = []
         for index in first_slice_2:
             for iteration in second_slice_2:
                 if index.name == iteration.name:
                     duplicates_value_to_exchange.append(index)
 
-        # Swap values
+        # Swap duplicates values
         for index, duplicate_value in enumerate(duplicates_value):
             index_1 = chromosome_prototype_1.index(duplicate_value)
             index_2 = chromosome_prototype_2.index(duplicates_value_to_exchange[index])
             chromosome_prototype_1[index_1], chromosome_prototype_2[index_2] = chromosome_prototype_2[index_2], \
                                                                                chromosome_prototype_1[index_1]
 
+        # Add the new chromosomes to the population
         populations.append(Chromosome(chromosome_prototype_1))
         populations.append(Chromosome(chromosome_prototype_2))
 
 
 def mutate():
+    """
+    Mutate one chromosome by swaping two cities.
+    """
     for chromosome in populations:
         for index in range(len(list_cities)):
-            if index != 0:
-                if round(random.uniform(0, 1), 2) <= mutation_rate / 2:
-                    random_position = random.randint(0, len(list_cities) - 1)  # todo random_position != index
-                    chromosome.list_cities[index], chromosome.list_cities[random_position] = \
-                        chromosome.list_cities[random_position], chromosome.list_cities[index]
+            if round(random.uniform(0, 1), 2) <= mutation_rate / 2:
+                random_position = random.randint(0, len(list_cities) - 1)
+                chromosome.list_cities[index], chromosome.list_cities[random_position] = \
+                    chromosome.list_cities[random_position], chromosome.list_cities[index]
 
 
 def ga_solve(file=None, gui=True, maxtime=0):
@@ -335,14 +425,28 @@ def ga_solve(file=None, gui=True, maxtime=0):
         populate(population_size)
         processing()
 
+    print(best_chromosome.fitness, end=" ")
+    for city in best_chromosome.list_cities:
+        print(city.name, end=" ")
+
+    return best_chromosome
+
 
 class City(object):
+    """
+    Store the name of the city and it's position
+    """
+
     def __init__(self, pos, name=None):
         self.name = name
         self.pos = pos
 
 
 class Chromosome(object):
+    """
+    Store a path that passes through all cities and store the total distance of the course as it's fitness.
+    """
+
     def __init__(self, cities_path):
         self.list_cities = cities_path
         self.fitness = 0
