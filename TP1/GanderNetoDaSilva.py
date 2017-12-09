@@ -11,10 +11,10 @@ end = None
 max_time_if_algorithm_stagnant = 5
 time_specified = False
 
-mutation_rate = 0.4
-cross_over_rate = 0.1
-population_size = 20
-number_of_survivors = int(population_size / 2)
+mutation_rate = 0.2
+cross_over_rate = 0.6
+population_size = 30
+number_of_elites = 3
 
 # Contient la population
 populations = []
@@ -196,8 +196,7 @@ def processing():
 
 def evaluate():
     """ Evaluate the population """
-    for i in range(len(populations)):
-        chromosome = populations[i]
+    for chromosome in populations:
         total_distance = 0
         cities = chromosome.list_cities
 
@@ -238,40 +237,57 @@ def selection():
             print(best_chromosome.fitness)
 
     """
-    Créer la prochaine population
+    Créer la prochaine demi-population
     """
-    survivors = populations[:number_of_survivors]
+    survivors = populations[:number_of_elites]
+    survivors.append(best_chromosome)
+    random_population_index = random.sample(range(len(survivors), int(population_size / 2)),
+                                            int(population_size / 2) - len(survivors))
+    for i in random_population_index:
+        survivors.append(populations[i])
 
 
 def crossing():
     global populations
     cutting_point = int(len(list_cities) * cross_over_rate)
     populations[:] = []
-    survivors.append(best_chromosome)
 
     # Feel populations with new chromosomes
-    for i in range(population_size):
-        choice = random.sample(range(len(survivors) - 1), 2)
-        first_slice_1 = survivors[choice[0]].list_cities[:cutting_point]
-        second_slice_1 = survivors[choice[1]].list_cities[cutting_point:]
+    for i in range(int(population_size / 2)):
+        choice = random.randint(0, len(survivors) - 1)
+        first_slice_1 = survivors[i].list_cities[:cutting_point]
+        second_slice_1 = survivors[choice].list_cities[cutting_point:]
 
-        first_slice_2 = survivors[choice[0]].list_cities[cutting_point:]
-        second_slice_2 = survivors[choice[1]].list_cities[:cutting_point]
+        first_slice_2 = survivors[i].list_cities[cutting_point:]
+        second_slice_2 = survivors[choice].list_cities[:cutting_point]
 
-        chromosome_prototype = first_slice_1 + second_slice_1
-        chromosome_prototype_tool = first_slice_2 + second_slice_2  # used to get the others repeated values to exchange
+        chromosome_prototype_1 = first_slice_1 + second_slice_1
+        chromosome_prototype_2 = first_slice_2 + second_slice_2
 
-        duplicates_value = [x for n, x in enumerate(chromosome_prototype) if x in chromosome_prototype[:n]]
-        duplicates_value_to_exchange = [x for n, x in enumerate(chromosome_prototype_tool) if
-                                        x in chromosome_prototype_tool[:n]]
+        duplicates_value = []
+        for index in first_slice_1:
+            for iteration in second_slice_1:
+                if index.name == iteration.name:
+                    duplicates_value.append(index)
+        # duplicates_value = [x for n, x in enumerate(chromosome_prototype_1) if x in chromosome_prototype_1[:n]]
+        # duplicates_value_to_exchange = [x for n, x in enumerate(chromosome_prototype_2) if
+        #                               x in chromosome_prototype_2[:n]]
+
+        duplicates_value_to_exchange = []
+        for index in first_slice_2:
+            for iteration in second_slice_2:
+                if index.name == iteration.name:
+                    duplicates_value_to_exchange.append(index)
+
         # Swap values
-        for index, city in enumerate(chromosome_prototype):
-            if city in duplicates_value:
-                chromosome_prototype[index] = duplicates_value_to_exchange[0]
-                del duplicates_value[duplicates_value.index(city)]
-                del duplicates_value_to_exchange[0]
+        for index, duplicate_value in enumerate(duplicates_value):
+            index_1 = chromosome_prototype_1.index(duplicate_value)
+            index_2 = chromosome_prototype_2.index(duplicates_value_to_exchange[index])
+            chromosome_prototype_1[index_1], chromosome_prototype_2[index_2] = chromosome_prototype_2[index_2], \
+                                                                               chromosome_prototype_1[index_1]
 
-        populations.append(Chromosome(chromosome_prototype))
+        populations.append(Chromosome(chromosome_prototype_1))
+        populations.append(Chromosome(chromosome_prototype_2))
 
 
 def mutate():
